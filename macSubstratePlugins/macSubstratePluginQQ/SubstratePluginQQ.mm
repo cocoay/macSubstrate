@@ -7,10 +7,9 @@
 //
 
 #import "SubstratePluginQQ.h"
+#import "SubstratePluginNotification.h"
 
-@interface SubstratePluginQQ () <NSUserNotificationCenterDelegate>
-
-@property (nonatomic, weak) id<NSUserNotificationCenterDelegate> qqDelegate;
+@interface SubstratePluginQQ ()
 
 @end
 
@@ -30,7 +29,6 @@
 {
     self = [super init];
     if (self) {
-        _qqDelegate = [[NSUserNotificationCenter defaultUserNotificationCenter] delegate];
     }
     return self;
 }
@@ -47,55 +45,16 @@
         for (NSDictionary *item in json) {
             NSString *text = item[@"text"];
             NSString *notifyInfo = ((text.length > 0) ? text : @"消息撤回");
-            [self notifyTitle:notifyTitle notifyInfo:notifyInfo notifyType:@"revoke"];
+            [[SubstratePluginNotification sharedManager] pushLocalNotifyTitle:notifyTitle
+                                                                   notifyInfo:notifyInfo
+                                                                   notifyType:@"revoke"];
         }
         
     } else {
         NSString *notifyInfo = @"消息撤回";
-        [self notifyTitle:notifyTitle notifyInfo:notifyInfo notifyType:@"revoke"];
-    }
-}
-
-- (void)notifyTitle:(NSString *)notifyTitle notifyInfo:(NSString *)notifyInfo notifyType:(NSString *)notifyType
-{
-    dispatch_async(dispatch_get_main_queue(), ^{
-        NSUserNotification *notification = [[NSUserNotification alloc] init];
-        notification.title = notifyTitle;
-        notification.informativeText = notifyInfo;
-        notification.hasActionButton = YES;
-        notification.soundName = NSUserNotificationDefaultSoundName;
-        notification.userInfo = @{NSStringFromClass([SubstratePluginQQ class]): (notifyType ?: @"")};
-        
-        [[NSUserNotificationCenter defaultUserNotificationCenter] setDelegate:self];
-        [[NSUserNotificationCenter defaultUserNotificationCenter] deliverNotification:notification];
-    });
-}
-
-- (BOOL)userNotificationCenter:(NSUserNotificationCenter *)center shouldPresentNotification:(NSUserNotification *)notification
-{
-    if ([notification.userInfo valueForKey:NSStringFromClass([SubstratePluginQQ class])]) {
-        return YES;
-        
-    } else {
-        if ([self.qqDelegate respondsToSelector:@selector(userNotificationCenter:shouldPresentNotification:)]) {
-            return [self.qqDelegate userNotificationCenter:center shouldPresentNotification:notification];
-        } else {
-            return NO;
-        }
-    }
-}
-
-- (void)userNotificationCenter:(NSUserNotificationCenter *)center didDeliverNotification:(NSUserNotification *)notification
-{
-    if ([self.qqDelegate respondsToSelector:@selector(userNotificationCenter:didDeliverNotification:)]) {
-        [self.qqDelegate userNotificationCenter:center didDeliverNotification:notification];
-    }
-}
-
-- (void)userNotificationCenter:(NSUserNotificationCenter *)center didActivateNotification:(NSUserNotification *)notification
-{
-    if ([self.qqDelegate respondsToSelector:@selector(userNotificationCenter:didActivateNotification:)]) {
-        [self.qqDelegate userNotificationCenter:center didActivateNotification:notification];
+        [[SubstratePluginNotification sharedManager] pushLocalNotifyTitle:notifyTitle
+                                                               notifyInfo:notifyInfo
+                                                               notifyType:@"revoke"];
     }
 }
 

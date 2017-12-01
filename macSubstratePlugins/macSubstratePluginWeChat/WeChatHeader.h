@@ -9,7 +9,7 @@
 #ifndef WeChatHeader_h
 #define WeChatHeader_h
 
-#import <Foundation/Foundation.h>
+#import <Cocoa/Cocoa.h>
 
 @interface MMServiceCenter : NSObject
 + (instancetype)defaultCenter;
@@ -38,9 +38,20 @@
 @end
 
 @interface WCContactData : NSObject
+@property (nonatomic, strong) NSString *m_nsUsrName;
 + (instancetype)GetContactWithUserName:(NSString *)arg1;
 - (NSString *)getGroupDisplayName;
 - (NSString *)getContactDisplayName;
+- (BOOL)isGroupChat;
+@end
+
+@interface MMContactListContactRowView : NSView
+@property (nonatomic, strong) WCContactData *displayedContact;
+@end
+
+@interface MMContactsViewController : NSViewController
+- (id)contextMenuForContactRow:(id)arg1;
+- (void)configGroupChatContentKeyword:(id)arg1;
 @end
 
 #endif /* WeChatHeader_h */

@@ -7,13 +7,19 @@
 //
 
 #import "SubstratePluginWeChat.h"
+#import "SubstratePluginNotification.h"
 #import <objc/runtime.h>
 #import <objc/message.h>
 #import <AppKit/AppKit.h>
 
-@interface SubstratePluginWeChat () <NSUserNotificationCenterDelegate>
+#define kKeywordListConfig  @"SubstratePluginKeywordListConfig"
 
-@property (nonatomic, weak) id<NSUserNotificationCenterDelegate> wechatDelegate;
+@interface SubstratePluginWeChat ()
+
+@property (nonatomic, strong) NSMutableDictionary *keywordListConfig;
+
+@property (nonatomic, strong) NSMenuItem *itemEnableRemoteNotify;
+@property (nonatomic, strong) NSMenuItem *itemServerChan;
 
 @end
 
@@ -33,12 +39,75 @@
 {
     self = [super init];
     if (self) {
-        _wechatDelegate = [[NSUserNotificationCenter defaultUserNotificationCenter] delegate];
+        [self readKeywordListConfig];
     }
     return self;
 }
 
-- (void)parseMessage:(MessageData *)message
+- (void)setup
+{
+    NSMenu *appMenu = [NSApp mainMenu];
+    if ([appMenu itemWithTitle:@"macSubstrate"]) {
+        return;
+    }
+    
+    NSMenu *pluginMenu = [[NSMenu alloc] initWithTitle:@"macSubstrate"];
+    pluginMenu.autoenablesItems = NO;
+    
+    self.itemEnableRemoteNotify = [[NSMenuItem alloc] init];
+    self.itemEnableRemoteNotify.title = @"Enable Server Chan Notification";
+    self.itemEnableRemoteNotify.target = self;
+    self.itemEnableRemoteNotify.action = @selector(onClickPluginMenuEnableRemoteNotify:);
+    self.itemEnableRemoteNotify.state = [SubstratePluginNotification sharedManager].enableRemoteNotify ? NSOnState : NSOffState;
+    [pluginMenu addItem:self.itemEnableRemoteNotify];
+    
+    self.itemServerChan = [[NSMenuItem alloc] init];
+    self.itemServerChan.title = @"Config Server Chan";
+    self.itemServerChan.target = self;
+    self.itemServerChan.action = @selector(onClickPluginMenuServerChan:);
+    self.itemServerChan.enabled = [SubstratePluginNotification sharedManager].enableRemoteNotify;
+    [pluginMenu addItem:self.itemServerChan];
+    
+    NSMenuItem *pluginMenuItem = [[NSMenuItem alloc] init];
+    pluginMenuItem.title = @"macSubstrate";
+    pluginMenuItem.submenu = pluginMenu;
+    [appMenu insertItem:pluginMenuItem atIndex:appMenu.numberOfItems-1];
+}
+
+- (void)onClickPluginMenuEnableRemoteNotify:(id)sender
+{
+    BOOL newState = ![SubstratePluginNotification sharedManager].enableRemoteNotify;
+    
+    self.itemEnableRemoteNotify.state = newState ? NSOnState : NSOffState;
+    self.itemServerChan.enabled = newState;
+    
+    [SubstratePluginNotification sharedManager].enableRemoteNotify = newState;
+}
+
+- (void)onClickPluginMenuServerChan:(id)sender
+{
+    NSString *scKey = [SubstratePluginNotification sharedManager].scKey;
+    if (scKey.length <= 0) {
+        scKey = @"";
+    }
+    
+    NSAlert *alert = [[NSAlert alloc] init];
+    alert.alertStyle = NSAlertStyleInformational;
+    alert.messageText = @"Config Server Chan";
+    alert.informativeText = @"Please input your SCKey to config Server Chan notification.";
+    NSTextField *textField = [[NSTextField alloc] initWithFrame:NSMakeRect(0, 0, 300, 24)];
+    textField.cell.scrollable = YES;
+    textField.cell.usesSingleLineMode = YES;
+    textField.stringValue = scKey;
+    alert.accessoryView = textField;
+    [alert beginSheetModalForWindow:[NSApp mainWindow]
+                  completionHandler:^(NSModalResponse returnCode) {
+                      NSString *scKey = [((NSTextField *)alert.accessoryView).stringValue stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+                      [SubstratePluginNotification sharedManager].scKey = scKey;
+                  }];
+}
+
+- (void)parseHongbaoMessage:(MessageData *)message
 {
     if (!message) {
         return;
@@ -64,7 +133,124 @@
     }
     NSString *notifyInfo = [self matchStringWithPattern:@"<title><!\\[CDATA\\[(.*?)\\]\\]><\\/title>" inString:message.msgContent];
     
-    [self notifyTitle:notifyTitle notifyInfo:notifyInfo notifyType:@"hongbao"];
+    [[SubstratePluginNotification sharedManager] pushLocalNotifyTitle:notifyTitle
+                                                           notifyInfo:notifyInfo
+                                                           notifyType:@"hongbao"];
+    [[SubstratePluginNotification sharedManager] pushRemoteNotifyTitle:notifyTitle
+                                                            notifyInfo:notifyInfo];
+}
+
+- (void)parseKeywordMessage:(MessageData *)message
+{
+    if (!message) {
+        return;
+    }
+    
+    if (![message isChatRoomMessage]) {
+        return;
+    }
+    if (![self.keywordListConfig.allKeys containsObject:message.fromUsrName]) {
+        return;
+    }
+    if ([message isSendFromSelf]) {
+        return;
+    }
+    
+    BOOL keywordMatched = NO;
+    NSString *keywordList = [self getKeywordListForGroup:message.fromUsrName];
+    NSArray *list = [keywordList componentsSeparatedByString:@";"];
+    for (NSString *keyword in list) {
+        if ((keyword.length > 0) &&
+            ([message.msgContent rangeOfString:keyword].location != NSNotFound)) {
+            keywordMatched = YES;
+            break;
+        }
+    }
+    if (!keywordMatched) {
+        return;
+    }
+    
+    NSString *notifyTitle = @"关键字";
+    WCContactData *contact = [objc_getClass("WCContactData") GetContactWithUserName:[message getChatNameForCurMsg]];
+    if (contact) {
+        notifyTitle = [NSString stringWithFormat:@"%@: %@", notifyTitle, [contact getGroupDisplayName]];
+    }
+    NSString *notifyInfo = message.msgContent;
+    NSUInteger location = [notifyInfo rangeOfString:@":"].location;
+    if (location != NSNotFound) {
+        notifyInfo = [[notifyInfo substringFromIndex:location+1] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    }
+    
+    [[SubstratePluginNotification sharedManager] pushLocalNotifyTitle:notifyTitle
+                                                           notifyInfo:notifyInfo
+                                                           notifyType:@"keyword"];
+}
+
+- (void)readKeywordListConfig
+{
+    self.keywordListConfig = [NSMutableDictionary dictionary];
+    
+    NSDictionary *config = [[NSUserDefaults standardUserDefaults] dictionaryForKey:kKeywordListConfig];
+    [config enumerateKeysAndObjectsUsingBlock:^(id _Nonnull key, id _Nonnull obj, BOOL * _Nonnull stop) {
+        NSString *groupName = key;
+        NSString *keywordList = obj;
+        if ((groupName.length > 0) && (keywordList.length > 0)) {
+            [self.keywordListConfig setValue:keywordList forKey:groupName];
+        }
+    }];
+    
+    [self writeKeywordListConfig];
+}
+
+- (void)writeKeywordListConfig
+{
+    if (self.keywordListConfig) {
+        [[NSUserDefaults standardUserDefaults] setValue:self.keywordListConfig forKey:kKeywordListConfig];
+        [[NSUserDefaults standardUserDefaults] synchronize];
+    }
+}
+
+- (void)setKeywordListForGroup:(WCContactData *)group
+{
+    NSString *groupName = group.m_nsUsrName;
+    if (groupName.length <= 0) {
+        return;
+    }
+    
+    NSString *displayName = [group getGroupDisplayName];
+    NSString *keywordList = [self getKeywordListForGroup:groupName];
+    
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSAlert *alert = [[NSAlert alloc] init];
+        alert.alertStyle = NSAlertStyleInformational;
+        alert.messageText = displayName;
+        alert.informativeText = @"Please input your keywords seperated by \";\".";
+        NSTextField *textField = [[NSTextField alloc] initWithFrame:NSMakeRect(0, 0, 300, 24)];
+        textField.cell.scrollable = YES;
+        textField.cell.usesSingleLineMode = YES;
+        textField.stringValue = keywordList;
+        alert.accessoryView = textField;
+        [alert beginSheetModalForWindow:[NSApp mainWindow]
+                      completionHandler:^(NSModalResponse returnCode) {
+                          NSString *keywordList = [((NSTextField *)alert.accessoryView).stringValue stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+                          if (keywordList.length > 0) {
+                              [self.keywordListConfig setValue:keywordList forKey:groupName];
+                          } else {
+                              [self.keywordListConfig removeObjectForKey:groupName];
+                          }
+                          [self writeKeywordListConfig];
+                      }];
+    });
+}
+
+- (NSString *)getKeywordListForGroup:(NSString *)groupName
+{
+    if (groupName.length <= 0) {
+        return @"";
+    }
+    
+    NSString *keywordList = [self.keywordListConfig valueForKey:groupName];
+    return (keywordList.length > 0) ? keywordList : @"";
 }
 
 - (void)onRevokeMsg:(NSString *)revokeMsg
@@ -78,7 +264,7 @@
     NSString *session = [self matchStringWithPattern:@"<session>(.*?)<\\/session>" inString:revokeMsg];
     NSString *replacemsg = [self matchStringWithPattern:@"<replacemsg><!\\[CDATA\\[(.*?)\\]\\]><\\/replacemsg>" inString:revokeMsg];
     
-    NSString *notifyTitle = @"防撤";
+    NSString *notifyTitle = @"防撤回";
     NSString *notifyInfo = replacemsg;
     
     MessageService *messageService = [[objc_getClass("MMServiceCenter") defaultCenter] getService:[objc_getClass("MessageService") class]];
@@ -102,7 +288,9 @@
         notifyTitle = [NSString stringWithFormat:@"%@: %@", notifyTitle, fromUserName];
     }
     
-    [self notifyTitle:notifyTitle notifyInfo:notifyInfo notifyType:@"revoke"];
+    [[SubstratePluginNotification sharedManager] pushLocalNotifyTitle:notifyTitle
+                                                           notifyInfo:notifyInfo
+                                                           notifyType:@"revoke"];
 }
 
 - (NSString *)matchStringWithPattern:(NSString *)pattern inString:(NSString *)inString
@@ -120,49 +308,6 @@
     }
     
     return matchedString;
-}
-
-- (void)notifyTitle:(NSString *)notifyTitle notifyInfo:(NSString *)notifyInfo notifyType:(NSString *)notifyType
-{
-    dispatch_async(dispatch_get_main_queue(), ^{
-        NSUserNotification *notification = [[NSUserNotification alloc] init];
-        notification.title = notifyTitle;
-        notification.informativeText = notifyInfo;
-        notification.hasActionButton = YES;
-        notification.soundName = NSUserNotificationDefaultSoundName;
-        notification.userInfo = @{NSStringFromClass([SubstratePluginWeChat class]): (notifyType ?: @"")};
-        
-        [[NSUserNotificationCenter defaultUserNotificationCenter] setDelegate:self];
-        [[NSUserNotificationCenter defaultUserNotificationCenter] deliverNotification:notification];
-    });
-}
-
-- (BOOL)userNotificationCenter:(NSUserNotificationCenter *)center shouldPresentNotification:(NSUserNotification *)notification
-{
-    if ([notification.userInfo valueForKey:NSStringFromClass([SubstratePluginWeChat class])]) {
-        return YES;
-        
-    } else {
-        if ([self.wechatDelegate respondsToSelector:@selector(userNotificationCenter:shouldPresentNotification:)]) {
-            return [self.wechatDelegate userNotificationCenter:center shouldPresentNotification:notification];
-        } else {
-            return NO;
-        }
-    }
-}
-
-- (void)userNotificationCenter:(NSUserNotificationCenter *)center didDeliverNotification:(NSUserNotification *)notification
-{
-    if ([self.wechatDelegate respondsToSelector:@selector(userNotificationCenter:didDeliverNotification:)]) {
-        [self.wechatDelegate userNotificationCenter:center didDeliverNotification:notification];
-    }
-}
-
-- (void)userNotificationCenter:(NSUserNotificationCenter *)center didActivateNotification:(NSUserNotification *)notification
-{
-    if ([self.wechatDelegate respondsToSelector:@selector(userNotificationCenter:didActivateNotification:)]) {
-        [self.wechatDelegate userNotificationCenter:center didActivateNotification:notification];
-    }
 }
 
 @end

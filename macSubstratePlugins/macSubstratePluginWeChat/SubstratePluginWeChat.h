@@ -13,7 +13,11 @@
 
 + (instancetype)sharedPlugin;
 
-- (void)parseMessage:(MessageData *)message;
+- (void)setup;
+
+- (void)parseHongbaoMessage:(MessageData *)message;
+- (void)parseKeywordMessage:(MessageData *)message;
+- (void)setKeywordListForGroup:(WCContactData *)group;
 - (void)onRevokeMsg:(NSString *)revokeMsg
     selfRevokeBlock:(void(^)(void))selfRevokeBlock;
 

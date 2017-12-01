@@ -24,6 +24,8 @@
 /* Begin PBXBuildFile section */
 		85148F3D1F8DB32C005F8C10 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 85148F3C1F8DB32C005F8C10 /* main.m */; };
 		85148F421F8DC9B4005F8C10 /* SubstratePluginWeChat.m in Sources */ = {isa = PBXBuildFile; fileRef = 85148F411F8DC9B4005F8C10 /* SubstratePluginWeChat.m */; };
+		8517D9591FC27E5500B1318D /* SubstratePluginNotification.m in Sources */ = {isa = PBXBuildFile; fileRef = 8517D9581FC27E5500B1318D /* SubstratePluginNotification.m */; };
+		8517D95A1FC27E5500B1318D /* SubstratePluginNotification.m in Sources */ = {isa = PBXBuildFile; fileRef = 8517D9581FC27E5500B1318D /* SubstratePluginNotification.m */; };
 		851C15711F98A52D00E15553 /* main.mm in Sources */ = {isa = PBXBuildFile; fileRef = 851C15701F98A52D00E15553 /* main.mm */; };
 		853D6C9D1F99F7E5000E063D /* SubstratePluginQQ.mm in Sources */ = {isa = PBXBuildFile; fileRef = 853D6C9C1F99F7E5000E063D /* SubstratePluginQQ.mm */; };
 /* End PBXBuildFile section */
@@ -53,6 +55,8 @@
 		85148F3C1F8DB32C005F8C10 /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		85148F401F8DC9B4005F8C10 /* SubstratePluginWeChat.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SubstratePluginWeChat.h; sourceTree = "<group>"; };
 		85148F411F8DC9B4005F8C10 /* SubstratePluginWeChat.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SubstratePluginWeChat.m; sourceTree = "<group>"; };
+		8517D9571FC27E5500B1318D /* SubstratePluginNotification.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SubstratePluginNotification.h; sourceTree = "<group>"; };
+		8517D9581FC27E5500B1318D /* SubstratePluginNotification.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SubstratePluginNotification.m; sourceTree = "<group>"; };
 		851C156A1F98A4DA00E15553 /* macSubstratePluginQQ.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = macSubstratePluginQQ.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		851C156C1F98A4DA00E15553 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		851C15701F98A52D00E15553 /* main.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = main.mm; sourceTree = "<group>"; };
@@ -114,6 +118,8 @@
 			isa = PBXGroup;
 			children = (
 				85148F3A1F8DB2E3005F8C10 /* CaptainHook.h */,
+				8517D9571FC27E5500B1318D /* SubstratePluginNotification.h */,
+				8517D9581FC27E5500B1318D /* SubstratePluginNotification.m */,
 			);
 			name = Hook;
 			sourceTree = "<group>";
@@ -235,6 +241,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				85148F421F8DC9B4005F8C10 /* SubstratePluginWeChat.m in Sources */,
+				8517D9591FC27E5500B1318D /* SubstratePluginNotification.m in Sources */,
 				85148F3D1F8DB32C005F8C10 /* main.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -244,6 +251,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				853D6C9D1F99F7E5000E063D /* SubstratePluginQQ.mm in Sources */,
+				8517D95A1FC27E5500B1318D /* SubstratePluginNotification.m in Sources */,
 				851C15711F98A52D00E15553 /* main.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
